@@ -9,12 +9,12 @@ import os, csv
 
 # ---------- Utilities ----------
 
+
 def matrix_kfold(ratings, n_splits=5, seed=42):
     rng = np.random.default_rng(seed)
     mask = np.argwhere(~np.isnan(ratings))
     rng.shuffle(mask)
 
-    
     kf = KFold(n_splits=n_splits, shuffle=False)
 
     for train_idx, val_idx in kf.split(mask):
@@ -26,16 +26,21 @@ def matrix_kfold(ratings, n_splits=5, seed=42):
             R_val[i, j] = np.nan
         yield R_train, R_val
 
+
 def _params_slug(algo: str, params: dict) -> str:
     def norm(v):
         if isinstance(v, float):
             return f"{v:.6g}".replace(".", "p")
         return str(v)
+
     keys = sorted(k for k in params.keys() if k != "fitting_algorithm")
     parts = [f"algo={algo}"] + [f"{k}={norm(params[k])}" for k in keys]
     return "__".join(parts)
 
-def _save_historic_csv(log_dir: str, algo: str, params: dict, fold_id: int, historic: list[dict]) -> None:
+
+def _save_historic_csv(
+    log_dir: str, algo: str, params: dict, fold_id: int, historic: list[dict]
+) -> None:
     os.makedirs(log_dir, exist_ok=True)
     slug = _params_slug(algo, params)
     path = os.path.join(log_dir, f"{slug}.csv")  # append all folds into one file
@@ -45,7 +50,16 @@ def _save_historic_csv(log_dir: str, algo: str, params: dict, fold_id: int, hist
         w = csv.writer(f)
         if write_header:
             w.writerow(
-                ["fold", "epoch", "train_loss", "train_rmse", "train_acc", "val_loss", "val_rmse", "val_acc"]
+                [
+                    "fold",
+                    "epoch",
+                    "train_loss",
+                    "train_rmse",
+                    "train_acc",
+                    "val_loss",
+                    "val_rmse",
+                    "val_acc",
+                ]
                 + [f"hp_{k}" for k in hp_keys]
             )
         for e in historic:
@@ -63,12 +77,25 @@ def _save_historic_csv(log_dir: str, algo: str, params: dict, fold_id: int, hist
             ] + [params[k] for k in hp_keys]
             w.writerow(row)
 
-def cross_val_rmse(matrix, model_params, metric=rmse, n_splits=5, seed=42, verbose=False, log_dir="outputs/try_normalisation"):
+
+def cross_val_rmse(
+    matrix,
+    model_params,
+    metric=rmse,
+    n_splits=5,
+    seed=42,
+    verbose=False,
+    log_dir="outputs/try_normalisation",
+):
     """Evaluate hyperparameters via KFold cross-validation."""
     scores = []
-    for fold_id, (R_train, R_val) in enumerate(matrix_kfold(matrix, n_splits=n_splits, seed=seed), start=1):
+    for fold_id, (R_train, R_val) in enumerate(
+        matrix_kfold(matrix, n_splits=n_splits, seed=seed), start=1
+    ):
         model = MatrixFactorisation(**model_params)
-        model.fit(initial_matrix=R_train, valid_matrix=R_val, normalize=True, verbose=False)
+        model.fit(
+            initial_matrix=R_train, valid_matrix=R_val, normalize=True, verbose=False
+        )
         # save per-epoch curves
         _save_historic_csv(
             log_dir=log_dir,
@@ -86,12 +113,7 @@ def cross_val_rmse(matrix, model_params, metric=rmse, n_splits=5, seed=42, verbo
 
 
 def grid_search_matrix_factorisation(
-    matrix,
-    param_grid,
-    metric=rmse,
-    n_splits=3,
-    seed=42,
-    verbose=True
+    matrix, param_grid, metric=rmse, n_splits=3, seed=42, verbose=True
 ):
     """
     Grid search + K-Fold CV for MatrixFactorisation over both ALS and GD.
@@ -118,7 +140,12 @@ def grid_search_matrix_factorisation(
             if verbose:
                 print(f"\nTesting ({algo}): {algo_params}")
             mean_rmse, std_rmse = cross_val_rmse(
-                matrix, params, metric=metric, n_splits=n_splits, seed=seed, verbose=False
+                matrix,
+                params,
+                metric=metric,
+                n_splits=n_splits,
+                seed=seed,
+                verbose=False,
             )
             results.append((algo, algo_params, mean_rmse, std_rmse))
             if verbose:
@@ -139,12 +166,12 @@ def grid_search_matrix_factorisation(
     return best_algo, best_params, best_rmse, results
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Open ratings
-    print('Ratings loading...')
+    print("Ratings loading...")
     ratings_train = np.load("data/ratings_train.npy")
     ratings_test = np.load("data/ratings_test.npy")
-    print('Ratings Loaded.')
+    print("Ratings Loaded.")
 
     # Settings
     test_size = 0.2
@@ -152,9 +179,11 @@ if __name__ == '__main__':
     seed = 42
 
     # Pre-processing
-    data_preprocessor = DataPreprocessor(method='user_mean')
-    ratings = data_preprocessor.fusion(train_matrix=ratings_train, test_matrix=ratings_test)
-    
+    data_preprocessor = DataPreprocessor(method="user_mean")
+    ratings = data_preprocessor.fusion(
+        train_matrix=ratings_train, test_matrix=ratings_test
+    )
+
     param_grid = {
         "gd": {
             "k": [1, 2, 5, 10, 20, 50],
