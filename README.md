@@ -1,4 +1,4 @@
-# Movie Recommendation System
+# Collaborative Filtering &ndash; Movies Recommendation
 
 This group project aims to predict missing entries in a movie-user ratings matrix from the MovieLens dataset. The codebase is organized into modular components for data preprocessing, matrix completion algorithms, evaluation metrics, and utilities.
 
